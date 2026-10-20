@@ -14,6 +14,7 @@ from datetime import UTC, datetime
 def ensure_quality_monitor(w, predictions_table: str, schema_full: str, assets_dir: str) -> None:
     from databricks.sdk.errors import NotFound
     from databricks.sdk.service.dataquality import (
+        AggregationGranularity,
         DataProfilingConfig,
         InferenceLogConfig,
         InferenceProblemType,
@@ -36,7 +37,7 @@ def ensure_quality_monitor(w, predictions_table: str, schema_full: str, assets_d
                     inference_log=InferenceLogConfig(
                         problem_type=InferenceProblemType.INFERENCE_PROBLEM_TYPE_REGRESSION,
                         timestamp_column="pickup_ts",
-                        granularities=["1 day"],
+                        granularities=[AggregationGranularity.AGGREGATION_GRANULARITY_1_DAY],
                         prediction_column="prediction",
                         model_id_column="model_version",
                         label_column="fare_amount",
@@ -44,8 +45,15 @@ def ensure_quality_monitor(w, predictions_table: str, schema_full: str, assets_d
                 ),
             )
         )
-        print(f"created data quality monitor on {predictions_table}")
-    w.data_quality.create_refresh(object_type="table", object_id=table_id, refresh=Refresh())
+        print(
+            f"created data quality monitor on {predictions_table} (first refresh runs automatically)"
+        )
+        return
+    w.data_quality.create_refresh(
+        object_type="table",
+        object_id=table_id,
+        refresh=Refresh(object_type="table", object_id=table_id),
+    )
 
 
 def main() -> None:
