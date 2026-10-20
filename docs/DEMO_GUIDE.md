@@ -19,6 +19,8 @@ Workspace: `https://dbc-b7edd512-cbb9.cloud.databricks.com`
 curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
 databricks --version
 terraform version        # >= 1.9
+sudo apt-get install -y jq   # used in step 4
+rm ~/.local/bin/databricks   # remove the legacy 0.18 CLI that shadows the new one in $PATH
 gh auth status           # GitHub CLI logged in
 python3.12 -m venv .venv && source .venv/bin/activate && pip install -r requirements-dev.txt
 ```
@@ -43,6 +45,7 @@ terraform init && terraform apply
 terraform output service_principals
 terraform output -json sp_secrets
 cd ../..
+# GitHub Free: environment secrets + reviewers need a PUBLIC repo (or Pro/Team for private)
 ```
 If `databricks_service_principal_secret` is rejected: create the secrets in the UI
 (Settings → Identity and access → Service principals → `sp-taxi-mlops-dev` → Secrets → Generate), then run again with
@@ -123,11 +126,12 @@ GitHub → Settings → Environments → `prod` (reviewer + `main` only).
 ### Step 4: Workload layer: Declarative Automation Bundle (4 min)
 **Do:** open `databricks.yml`, then compare the targets in the terminal:
 ```bash
-databricks bundle validate -t dev  -o json --profile dev-sp  | jq '.resources.jobs.train.name, .variables.max_rows.value'
+databricks bundle validate -t dev  -o json --profile dev-sp  | jq '.resources.jobs.train.name, .variables.max_rows.value, .workspace.root_path'
 BUNDLE_VAR_service_principal_id=<prod app id> \
-databricks bundle validate -t prod -o json --profile prod-sp | jq '.resources.jobs.train.name, .variables.max_rows.value'
+databricks bundle validate -t prod -o json --profile prod-sp | jq '.resources.jobs.train.name, .variables.max_rows.value, .workspace.root_path'
 ```
-**Show:** `"[dev] taxi-train-dev"` / `3000` vs `"taxi-train-prod"` / `0` (all rows).
+**Show:** `"[dev] taxi-train-dev"` / `3000` vs `"taxi-train-prod"` / `0` (all rows), and each root path in that SP's own home
+(`/Workspace/Users/<app id>/...`), because `/Workspace/Shared` is writable by every user.
 **Say:** "Same code, two deployments. Prod trains on prod data. We don't copy dev's model into prod.
 'Deploy code, not models' is the Databricks-recommended pattern."
 
@@ -146,7 +150,7 @@ so training never starts on bad features."
 **Show:**
 - tasks `refresh_features → train`, all on serverless; point out how short the train task is;
 - `src/jobs/train.py`: `create_training_set(... FeatureLookup ...)`, `log_model(name=...)`, `log_metrics(model_id=...)`;
-- Experiments → `/Shared/taxi-mlops/dev/taxi-fare-experiment` → run: params, `training_set` input, `git_sha` tag;
+- Experiments → `/Users/<dev SP app id>/taxi-mlops/dev/[dev] taxi-fare-experiment` → run: params, `training_set` input, `git_sha` tag;
 - Catalog Explorer → `taxi_fare_model` → version: metrics on the version page (MLflow 3 LoggedModel), lineage.
 **Say:** "Every version tells us which commit, which data and which metrics produced it.
 There's no online feature store on Free Edition, so the small zip-feature table is packed inside the model.

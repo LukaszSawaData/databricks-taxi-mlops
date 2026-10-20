@@ -5,7 +5,7 @@ A very basic but complete MLOps setup on **Databricks Free Edition**
 
 ## Scope (as requested)
 - Data from a dataset already inside Databricks: `samples.nyctaxi.trips` (about 22k rows).
-- **Terraform**: platform layer (service principals + secrets, UC schemas, grants, workspace folders, GitHub environments/secrets).
+- **Terraform**: platform layer (service principals + secrets, UC schemas, grants, GitHub environments/secrets).
 - **DAB (Declarative Automation Bundles)**: workload layer (pipeline, jobs, experiment, model) deployed per target.
 - **Lakeflow Spark Declarative Pipeline**: data tests (expectations) + feature computation.
 - **Feature Store** (UC feature table with a PK) + `FeatureEngineeringClient.create_training_set`.

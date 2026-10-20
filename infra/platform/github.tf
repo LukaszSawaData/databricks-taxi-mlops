@@ -38,17 +38,17 @@ resource "github_actions_variable" "host" {
 }
 
 resource "github_actions_environment_secret" "client_id" {
-  for_each        = var.environments
-  repository      = var.github_repo
-  environment     = github_repository_environment.env[each.key].environment
-  secret_name     = "DATABRICKS_CLIENT_ID"
-  plaintext_value = local.sp_client_id[each.key]
+  for_each    = var.environments
+  repository  = var.github_repo
+  environment = github_repository_environment.env[each.key].environment
+  secret_name = "DATABRICKS_CLIENT_ID"
+  value       = local.sp_client_id[each.key]
 }
 
 resource "github_actions_environment_secret" "client_secret" {
-  for_each        = var.environments
-  repository      = var.github_repo
-  environment     = github_repository_environment.env[each.key].environment
-  secret_name     = "DATABRICKS_CLIENT_SECRET"
-  plaintext_value = local.sp_secret[each.key]
+  for_each    = var.environments
+  repository  = var.github_repo
+  environment = github_repository_environment.env[each.key].environment
+  secret_name = "DATABRICKS_CLIENT_SECRET"
+  value       = local.sp_secret[each.key]
 }

@@ -1,7 +1,7 @@
 resources:
   experiments:
     taxi:
-      name: /Workspace/Shared/taxi-mlops/${bundle.target}/taxi-fare-experiment
+      name: /Workspace/Users/${workspace.current_user.userName}/taxi-mlops/${bundle.target}/taxi-fare-experiment
 
   # Owned by the env service principal (run_as) - only the owner can move the @champion alias.
   # Aliases are NOT managed here: the deployment job owns them.

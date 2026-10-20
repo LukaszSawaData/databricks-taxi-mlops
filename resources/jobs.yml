@@ -120,7 +120,7 @@ resources:
               - --catalog=${var.catalog}
               - --schema=${var.schema}
               - --model_name=${resources.registered_models.taxi_fare.name}
-              - --monitor_assets_dir=/Workspace/Shared/taxi-mlops/${bundle.target}/monitoring
+              - --monitor_assets_dir=/Workspace/Users/${workspace.current_user.userName}/taxi-mlops/${bundle.target}/monitoring
               - --train_job_name=taxi-train-${bundle.target}
               - --retrain_on_drift=${var.retrain_on_drift}
               - --max_rmse=${var.max_rmse}

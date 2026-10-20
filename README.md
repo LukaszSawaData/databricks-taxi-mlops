@@ -14,7 +14,7 @@ The model is deliberately trivial (fare regression, a few seconds to train). The
   Databricks Free Edition (one workspace)           ▼   databricks bundle deploy -t <env>
                                                         databricks bundle run train -t <env>
   ┌─ Terraform (infra/platform, run once by you) ─────────────────────────────────────┐
-  │ sp-taxi-mlops-dev / -prod · workspace.taxi_dev / taxi_prod · /Shared/taxi-mlops/<env> │
+  │ sp-taxi-mlops-dev / -prod · workspace.taxi_dev / taxi_prod · GitHub envs + secrets     │
   └───────────────────────────────────────────────────────────────────────────────────┘
   ┌─ Bundle target <env> (runs as sp-taxi-mlops-<env>) ───────────────────────────────┐
   │ Lakeflow pipeline taxi-features-<env>                                             │
@@ -40,7 +40,7 @@ Two gates protect prod. **Code gate**: the GitHub `prod` environment approval be
 |---|---|---|
 | Identity (deploys + runs) | `sp-taxi-mlops-dev` | `sp-taxi-mlops-prod` |
 | UC schema (tables, features, model, monitoring) | `workspace.taxi_dev` | `workspace.taxi_prod` |
-| Workspace folder (bundle files, experiment, dashboards) | `/Shared/taxi-mlops/dev` | `/Shared/taxi-mlops/prod` |
+| Workspace folder (bundle files, experiment, dashboards) | `/Users/<dev SP id>/` | `/Users/<prod SP id>/` |
 | Data volume | 3k rows | all rows (~22k) |
 | Approval of a new model | automatic | human |
 | Endpoint | `taxi-fare-dev` | `taxi-fare-prod` |
@@ -48,7 +48,7 @@ Two gates protect prod. **Code gate**: the GitHub `prod` environment approval be
 ## Repository layout
 
 ```
-infra/platform/          Terraform: SPs + secrets, schemas, grants, folders, GitHub envs/secrets
+infra/platform/          Terraform: SPs + secrets, schemas, grants, GitHub envs/secrets
 databricks.yml           Bundle: variables, run_as, targets dev/prod
 resources/               Bundle resources: pipeline, 3 jobs, experiment, registered model
 src/pipelines/           Lakeflow declarative pipeline (data tests + features)

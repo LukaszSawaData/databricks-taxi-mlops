@@ -43,15 +43,19 @@ run_as:
   service_principal_name: ${var.service_principal_id}
 
 permissions:
+  - level: CAN_MANAGE
+    service_principal_name: ${var.service_principal_id}
   - level: CAN_VIEW
     group_name: users
 
+# Files live in the deploying SP's home folder: /Workspace/Shared gives every user CAN_MANAGE
+# (inherited, can't be revoked), which would break dev/prod isolation.
 targets:
   dev:
     default: true
     workspace:
       host: https://dbc-b7edd512-cbb9.cloud.databricks.com
-      root_path: /Workspace/Shared/taxi-mlops/dev/.bundle
+      root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
     presets:
       name_prefix: "[dev] "
       pipelines_development: true
@@ -67,7 +71,7 @@ targets:
     mode: production
     workspace:
       host: https://dbc-b7edd512-cbb9.cloud.databricks.com
-      root_path: /Workspace/Shared/taxi-mlops/prod/.bundle
+      root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
     presets:
       tags:
         env: prod
