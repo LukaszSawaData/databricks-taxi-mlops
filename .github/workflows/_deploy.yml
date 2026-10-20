@@ -1,0 +1,70 @@
+# Reusable: deploy the bundle to one target, train on that target's data, verify serving.
+name: deploy (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      target:
+        type: string
+        required: true
+      wait_for_deployment:
+        description: Wait for the MLflow deployment job (false in prod - it waits for human approval).
+        type: boolean
+        default: true
+
+env:
+  DATABRICKS_CLI_VERSION: 1.21.0
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.target }}
+    # Free Edition: 1 active pipeline per type, 5 concurrent tasks -> never deploy two targets at once.
+    concurrency:
+      group: databricks-free-edition
+      cancel-in-progress: false
+    env:
+      DATABRICKS_HOST: ${{ vars.DATABRICKS_HOST }}
+      DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+      DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+      BUNDLE_VAR_service_principal_id: ${{ secrets.DATABRICKS_CLIENT_ID }}
+      BUNDLE_VAR_git_sha: ${{ github.sha }}
+      MODEL: workspace.taxi_${{ inputs.target }}.taxi_fare_model
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: databricks/setup-cli@main
+        with:
+          version: ${{ env.DATABRICKS_CLI_VERSION }}
+      - run: pip install -r requirements-dev.txt
+
+      - name: Validate bundle
+        run: databricks bundle validate -t ${{ inputs.target }}
+
+      - name: Deploy bundle (pipeline, jobs, experiment, registered model)
+        run: databricks bundle deploy -t ${{ inputs.target }} --auto-approve
+
+      - name: Train on ${{ inputs.target }} data (pipeline refresh + training)
+        run: databricks bundle run train -t ${{ inputs.target }}
+
+      - name: Wait for MLflow deployment job (evaluation -> approval -> deployment -> batch)
+        id: deployment
+        if: inputs.wait_for_deployment
+        run: |
+          JOB_ID=$(databricks bundle summary -t ${{ inputs.target }} -o json | jq -r '.resources.jobs.deployment.id')
+          python scripts/wait_for_deployment.py --deployment-job-id "$JOB_ID" --model "$MODEL"
+
+      - name: Smoke test serving endpoint
+        if: inputs.wait_for_deployment
+        run: |
+          python scripts/smoke_test_endpoint.py \
+            --endpoint taxi-fare-${{ inputs.target }} \
+            --expected-version ${{ steps.deployment.outputs.model_version }}
+
+      - name: Next step
+        if: ${{ !inputs.wait_for_deployment }}
+        run: |
+          echo "### Model trained on ${{ inputs.target }} data" >> "$GITHUB_STEP_SUMMARY"
+          echo "Open Catalog Explorer -> $MODEL -> newest version -> **Approve** to deploy it." >> "$GITHUB_STEP_SUMMARY"

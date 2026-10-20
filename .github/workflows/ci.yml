@@ -1,0 +1,40 @@
+# PR: static checks, then deploy the PR's code to dev and run the whole flow as an integration test.
+name: ci
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements-dev.txt
+      - name: Lint
+        run: ruff check . && ruff format --check .
+      - name: Unit tests
+        run: pytest -q
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.16"
+      - name: Terraform fmt + validate (platform)
+        working-directory: infra/platform
+        run: |
+          terraform fmt -check -recursive
+          terraform init -backend=false -input=false
+          terraform validate
+
+  dev:
+    needs: checks
+    uses: ./.github/workflows/_deploy.yml
+    with:
+      target: dev
+    secrets: inherit

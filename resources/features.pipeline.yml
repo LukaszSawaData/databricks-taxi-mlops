@@ -1,0 +1,14 @@
+resources:
+  pipelines:
+    features:
+      name: taxi-features-${bundle.target}
+      catalog: ${var.catalog}
+      schema: ${var.schema}
+      serverless: true
+      channel: CURRENT
+      libraries:
+        - file:
+            path: ../src/pipelines/features.py
+      configuration:
+        taxi.max_rows: ${var.max_rows}
+        taxi.split_date: ${var.split_date}

@@ -1,0 +1,77 @@
+# Declarative Automation Bundle (formerly Databricks Asset Bundles) - the workload layer.
+# Platform (service principals, schemas, grants, folders, GitHub envs) lives in infra/platform (Terraform).
+bundle:
+  name: taxi-mlops
+
+include:
+  - resources/*.yml
+
+sync:
+  include:
+    - src/**
+
+variables:
+  catalog:
+    description: UC catalog. Free Edition ships with `workspace`.
+    default: workspace
+  schema:
+    description: UC schema for this environment (created by Terraform).
+  service_principal_id:
+    description: Application ID of this environment's service principal (run_as).
+  max_rows:
+    description: Rows sampled from samples.nyctaxi.trips (0 = all, about 22k).
+    default: 3000
+  split_date:
+    description: Trips before this date train the model, trips after it are scored.
+    default: "2016-02-15"
+  max_rmse:
+    description: Absolute quality gate for the deployment job.
+    default: 6.0
+  auto_approve:
+    description: Auto-approve in the deployment job (dev only).
+    default: "false"
+  serving_enabled:
+    description: Create/update the real-time endpoint (Free Edition limits active endpoints).
+    default: "true"
+  retrain_on_drift:
+    default: "false"
+  git_sha:
+    default: local
+
+# Every resource runs as the environment's service principal, not as the person who deployed it.
+run_as:
+  service_principal_name: ${var.service_principal_id}
+
+permissions:
+  - level: CAN_VIEW
+    group_name: users
+
+targets:
+  dev:
+    default: true
+    workspace:
+      host: https://dbc-b7edd512-cbb9.cloud.databricks.com
+      root_path: /Workspace/Shared/taxi-mlops/dev/.bundle
+    presets:
+      name_prefix: "[dev] "
+      pipelines_development: true
+      trigger_pause_status: PAUSED
+      tags:
+        env: dev
+    variables:
+      schema: taxi_dev
+      max_rows: 3000
+      auto_approve: "true"
+
+  prod:
+    mode: production
+    workspace:
+      host: https://dbc-b7edd512-cbb9.cloud.databricks.com
+      root_path: /Workspace/Shared/taxi-mlops/prod/.bundle
+    presets:
+      tags:
+        env: prod
+    variables:
+      schema: taxi_prod
+      max_rows: 0 # prod trains on the full prod dataset
+      auto_approve: "false"

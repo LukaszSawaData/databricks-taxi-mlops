@@ -1,0 +1,7 @@
+# Local / CI only. Job runtime deps live in src/requirements-job.txt
+pandas==3.0.6
+numpy
+scikit-learn==1.9.1
+pytest==9.1.1
+ruff==0.17.1
+databricks-sdk==0.154.0

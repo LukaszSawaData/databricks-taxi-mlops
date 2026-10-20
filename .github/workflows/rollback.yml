@@ -1,0 +1,37 @@
+name: rollback
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        type: choice
+        options: [dev, prod]
+        required: true
+      version:
+        description: Existing model version to serve again
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.target }}
+    concurrency:
+      group: databricks-free-edition
+      cancel-in-progress: false
+    env:
+      DATABRICKS_HOST: ${{ vars.DATABRICKS_HOST }}
+      DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+      DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements-dev.txt
+      - run: python scripts/rollback.py --env ${{ inputs.target }} --version ${{ inputs.version }}
+      - run: |
+          python scripts/smoke_test_endpoint.py \
+            --endpoint taxi-fare-${{ inputs.target }} --expected-version ${{ inputs.version }}

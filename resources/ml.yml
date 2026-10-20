@@ -1,0 +1,13 @@
+resources:
+  experiments:
+    taxi:
+      name: /Workspace/Shared/taxi-mlops/${bundle.target}/taxi-fare-experiment
+
+  # Owned by the env service principal (run_as) - only the owner can move the @champion alias.
+  # Aliases are NOT managed here: the deployment job owns them.
+  registered_models:
+    taxi_fare:
+      name: taxi_fare_model
+      catalog_name: ${var.catalog}
+      schema_name: ${var.schema}
+      comment: NYC taxi fare regressor (${bundle.target}). @champion = deployed version.

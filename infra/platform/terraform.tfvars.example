@@ -1,0 +1,6 @@
+# cp terraform.tfvars.example terraform.tfvars
+github_owner = "<your-github-login>"
+github_repo  = "databricks-taxi-mlops"
+
+# Free GitHub plan + private repo -> environment reviewers are not available:
+# prod_required_reviewers = false

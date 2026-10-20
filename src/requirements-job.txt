@@ -1,0 +1,4 @@
+mlflow==3.17.1
+scikit-learn==1.9.1
+databricks-feature-engineering==0.18.2
+databricks-sdk==0.154.0

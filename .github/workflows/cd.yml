@@ -1,0 +1,26 @@
+# main: re-verify on dev, then deploy CODE to prod (GitHub approval) and train on PROD data.
+# The prod model is then gated a second time by the MLflow deployment job (Approve in UC).
+name: cd
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dev:
+    uses: ./.github/workflows/_deploy.yml
+    with:
+      target: dev
+    secrets: inherit
+
+  prod:
+    needs: dev
+    uses: ./.github/workflows/_deploy.yml
+    with:
+      target: prod
+      wait_for_deployment: false
+    secrets: inherit

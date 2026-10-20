@@ -1,0 +1,127 @@
+# Three Lakeflow Jobs, all serverless:
+#   train          features pipeline -> train + register   (new version auto-triggers `deployment`)
+#   deployment     MLflow 3 deployment job: evaluation -> approval_check -> deployment -> batch_inference
+#   batch_inference  score @champion, write predictions, monitoring, optional retrain on drift
+# Reference chain is one-way (train -> deployment -> batch_inference) to avoid cycles.
+
+resources:
+  jobs:
+    train:
+      name: taxi-train-${bundle.target}
+      max_concurrent_runs: 1
+      timeout_seconds: 3600
+      queue:
+        enabled: true
+      environments:
+        - environment_key: ml
+          spec:
+            environment_version: "4" # Python 3.12
+            dependencies:
+              - -r ${workspace.file_path}/src/requirements-job.txt
+      tasks:
+        - task_key: refresh_features
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.features.id}
+        - task_key: train
+          depends_on:
+            - task_key: refresh_features
+          environment_key: ml
+          spark_python_task:
+            python_file: ../src/jobs/train.py
+            parameters:
+              - --catalog=${var.catalog}
+              - --schema=${var.schema}
+              - --model_name=${resources.registered_models.taxi_fare.name}
+              - --experiment=${resources.experiments.taxi.name}
+              - --deployment_job_id=${resources.jobs.deployment.id}
+              - --src_dir=${workspace.file_path}/src
+              - --git_sha=${var.git_sha}
+
+    deployment:
+      name: taxi-deployment-${bundle.target}
+      max_concurrent_runs: 1
+      timeout_seconds: 3600
+      # Required by MLflow deployment jobs; filled in automatically when a version is created.
+      parameters:
+        - name: model_name
+          default: ""
+        - name: model_version
+          default: ""
+      environments:
+        - environment_key: ml
+          spec:
+            environment_version: "4" # Python 3.12
+            dependencies:
+              - -r ${workspace.file_path}/src/requirements-job.txt
+      tasks:
+        - task_key: evaluation
+          environment_key: ml
+          spark_python_task:
+            python_file: ../src/jobs/evaluate.py
+            parameters:
+              - --model_name={{job.parameters.model_name}}
+              - --model_version={{job.parameters.model_version}}
+              - --catalog=${var.catalog}
+              - --schema=${var.schema}
+              - --max_rmse=${var.max_rmse}
+              - --auto_approve=${var.auto_approve}
+              - --src_dir=${workspace.file_path}/src
+        - task_key: approval_check # name must start with "approval"
+          depends_on:
+            - task_key: evaluation
+          max_retries: 0
+          environment_key: ml
+          spark_python_task:
+            python_file: ../src/jobs/approval.py
+            parameters:
+              - --model_name={{job.parameters.model_name}}
+              - --model_version={{job.parameters.model_version}}
+        - task_key: deployment
+          depends_on:
+            - task_key: approval_check
+          environment_key: ml
+          spark_python_task:
+            python_file: ../src/jobs/deploy.py
+            parameters:
+              - --model_name={{job.parameters.model_name}}
+              - --model_version={{job.parameters.model_version}}
+              - --endpoint=taxi-fare-${bundle.target}
+              - --env=${bundle.target}
+              - --catalog=${var.catalog}
+              - --schema=${var.schema}
+              - --serving_enabled=${var.serving_enabled}
+              - --src_dir=${workspace.file_path}/src
+        - task_key: batch_inference
+          depends_on:
+            - task_key: deployment
+          run_job_task:
+            job_id: ${resources.jobs.batch_inference.id}
+
+    batch_inference:
+      name: taxi-batch-inference-${bundle.target}
+      max_concurrent_runs: 1
+      timeout_seconds: 3600
+      schedule:
+        quartz_cron_expression: "0 0 6 * * ?"
+        timezone_id: UTC
+        pause_status: PAUSED # Free Edition has daily quotas - unpause consciously
+      environments:
+        - environment_key: ml
+          spec:
+            environment_version: "4" # Python 3.12
+            dependencies:
+              - -r ${workspace.file_path}/src/requirements-job.txt
+      tasks:
+        - task_key: score_and_monitor
+          environment_key: ml
+          spark_python_task:
+            python_file: ../src/jobs/batch_inference.py
+            parameters:
+              - --catalog=${var.catalog}
+              - --schema=${var.schema}
+              - --model_name=${resources.registered_models.taxi_fare.name}
+              - --monitor_assets_dir=/Workspace/Shared/taxi-mlops/${bundle.target}/monitoring
+              - --train_job_name=taxi-train-${bundle.target}
+              - --retrain_on_drift=${var.retrain_on_drift}
+              - --max_rmse=${var.max_rmse}
+              - --src_dir=${workspace.file_path}/src
