@@ -6,9 +6,15 @@ bundle:
 include:
   - resources/*.yml
 
+# Upload only what jobs need (bundle config + src). The rest stays local/GitHub.
 sync:
-  include:
-    - src/**
+  exclude:
+    - .venv/**
+    - .github/**
+    - docs/**
+    - infra/**
+    - scripts/**
+    - tests/**
 
 variables:
   catalog:
