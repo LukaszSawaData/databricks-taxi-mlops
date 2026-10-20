@@ -3,7 +3,8 @@
 A presenter runbook. **Part 0** is done before the audience arrives. **Part 1** is the live show, about 45 minutes.
 Each step has: **Do** (what you click or type), **Show** (what the audience sees), **Say** (the point to make).
 
-> Serverless start-up + pipeline + training + endpoint rollout takes 15–25 minutes end to end.
+> Measured on this workspace (2026-10-21): train job 3 min when capacity is free, **46 min when Free Edition
+> queues it**; deployment job + first endpoint rollout about 15 min.
 > Never wait for it live. Pre-run everything in Part 0, show finished runs, and trigger one fresh
 > run (the PR in step 9) at the start so it finishes while you talk.
 
@@ -84,10 +85,10 @@ open `workspace.taxi_prod.taxi_fare_model` → newest version → **Approve**. C
 ### 0.6 Things to check, and their fallbacks
 | Check | If it fails |
 |---|---|
-| Deployment job started by itself after `train` | Preview not enabled → CI's `wait_for_deployment.py` starts it anyway; in a manual run: Jobs → `taxi-deployment-dev` → Run now with `model_name`, `model_version` |
-| Endpoint `taxi-fare-dev` Ready | Free Edition endpoint limit → set `serving_enabled: "false"` in dev, demo serving on prod only |
-| `taxi_predictions` → Quality tab shows a monitor | Not on Free Edition → show `taxi_model_metrics` (always written) |
-| `taxi_fare_payload` inference table exists | Skipped (log says WARN) → show the endpoint's built-in Metrics tab instead |
+| Deployment job started by itself after `train` | ✅ verified. If not: CI's `wait_for_deployment.py` starts it; manually: Run now **with** `model_name`, `model_version` (empty params fail) |
+| Endpoint `taxi-fare-dev` Ready | ✅ verified (v2). If a 2nd endpoint hits the Free Edition limit → `serving_enabled: "false"` in dev |
+| `taxi_predictions` → Quality tab shows a monitor | ✅ monitor created; dashboard appears after its first refresh. Fallback: `taxi_model_metrics` |
+| `taxi_fare_payload` inference table exists | ❌ not on Free Edition (endpoint created without AI Gateway) → show the endpoint's Metrics tab |
 | Free Edition daily quota | Don't re-run on the demo day before the show; everything you show must already be finished |
 
 ### 0.7 Browser tabs to open before you start (in this order)
