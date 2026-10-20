@@ -29,7 +29,7 @@ def trips_raw():
 @dp.expect_or_drop("valid_fare", "fare_amount BETWEEN 2.5 AND 200")
 @dp.expect_or_drop("valid_distance", "trip_distance BETWEEN 0.1 AND 100")
 @dp.expect_or_drop("has_zip", "pickup_zip IS NOT NULL")
-@dp.expect("dropoff_after_pickup", "tpep_dropoff_datetime > tpep_pickup_datetime")
+@dp.expect("dropoff_after_pickup", "tpep_dropoff_datetime > pickup_ts")  # checks OUTPUT columns
 def trips_clean():
     return spark.read.table("trips_raw").select(
         "trip_id",
