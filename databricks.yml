@@ -23,7 +23,7 @@ variables:
   schema:
     description: UC schema for this environment (created by Terraform).
   service_principal_id:
-    description: Application ID of this environment's service principal (run_as).
+    description: Application ID of this environment's service principal (run_as). Not a secret.
   max_rows:
     description: Rows sampled from samples.nyctaxi.trips (0 = all, about 22k).
     default: 3000
@@ -70,6 +70,7 @@ targets:
         env: dev
     variables:
       schema: taxi_dev
+      service_principal_id: 2b1aec99-1170-4fcf-acd1-7163436e6a91 # sp-taxi-mlops-dev (terraform output)
       max_rows: 3000
       auto_approve: "true"
 
@@ -83,5 +84,6 @@ targets:
         env: prod
     variables:
       schema: taxi_prod
+      service_principal_id: b7a42199-848f-4724-bf75-943ed870bb03 # sp-taxi-mlops-prod (terraform output)
       max_rows: 0 # prod trains on the full prod dataset
       auto_approve: "false"

@@ -69,7 +69,6 @@ If you deploy as yourself, the SP's deployment job can't move `@champion`.
 
 ### 0.5 Dry run: full flow on dev, then prod
 ```bash
-export BUNDLE_VAR_service_principal_id=<service_principals.dev>
 databricks bundle validate -t dev --profile dev-sp
 databricks bundle deploy   -t dev --profile dev-sp
 databricks bundle run train -t dev --profile dev-sp       # pipeline + training -> v1 -> deployment job
@@ -127,7 +126,6 @@ GitHub → Settings → Environments → `prod` (reviewer + `main` only).
 **Do:** open `databricks.yml`, then compare the targets in the terminal:
 ```bash
 databricks bundle validate -t dev  -o json --profile dev-sp  | jq '.resources.jobs.train.name, .variables.max_rows.value, .workspace.root_path'
-BUNDLE_VAR_service_principal_id=<prod app id> \
 databricks bundle validate -t prod -o json --profile prod-sp | jq '.resources.jobs.train.name, .variables.max_rows.value, .workspace.root_path'
 ```
 **Show:** `"[dev] taxi-train-dev"` / `3000` vs `"taxi-train-prod"` / `0` (all rows), and each root path in that SP's own home
@@ -214,7 +212,7 @@ Recap the chain: Terraform (platform) → Bundle (workload) → Lakeflow pipelin
 ## After the demo: teardown
 ```bash
 databricks bundle destroy -t dev  --profile dev-sp  --auto-approve
-BUNDLE_VAR_service_principal_id=<prod app id> databricks bundle destroy -t prod --profile prod-sp --auto-approve
+databricks bundle destroy -t prod --profile prod-sp --auto-approve
 databricks serving-endpoints delete taxi-fare-dev  --profile free
 databricks serving-endpoints delete taxi-fare-prod --profile free
 cd infra/platform && terraform destroy
