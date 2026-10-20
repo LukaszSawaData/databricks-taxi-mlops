@@ -41,7 +41,9 @@ def deploy_version(
         w.serving_endpoints.get(endpoint)
     except NotFound:
         print(f"creating endpoint {endpoint}")
-        config = EndpointCoreConfigInput(served_entities=[entity], traffic_config=traffic)
+        config = EndpointCoreConfigInput(
+            name=endpoint, served_entities=[entity], traffic_config=traffic
+        )
         tags = [EndpointTag(key="env", value=env), EndpointTag(key="project", value="taxi-mlops")]
         # Inference table = request/response log for monitoring. Best effort: may be
         # unavailable on Free Edition, and serving must still work without it.

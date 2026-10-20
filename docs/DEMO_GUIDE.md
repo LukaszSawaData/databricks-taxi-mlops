@@ -73,7 +73,7 @@ databricks bundle validate -t dev --profile dev-sp
 databricks bundle deploy   -t dev --profile dev-sp
 databricks bundle run train -t dev --profile dev-sp       # pipeline + training -> v1 -> deployment job
 ```
-Wait until the deployment job **`[dev] taxi-deployment-dev`** finishes (Jobs UI), then:
+Wait until the deployment job **`taxi-deployment-dev`** finishes (Jobs UI), then:
 ```bash
 DATABRICKS_CONFIG_PROFILE=dev-sp python scripts/smoke_test_endpoint.py --endpoint taxi-fare-dev --expected-version 1
 ```
@@ -128,13 +128,13 @@ GitHub → Settings → Environments → `prod` (reviewer + `main` only).
 databricks bundle validate -t dev  -o json --profile dev-sp  | jq '.resources.jobs.train.name, .variables.max_rows.value, .workspace.root_path'
 databricks bundle validate -t prod -o json --profile prod-sp | jq '.resources.jobs.train.name, .variables.max_rows.value, .workspace.root_path'
 ```
-**Show:** `"[dev] taxi-train-dev"` / `3000` vs `"taxi-train-prod"` / `0` (all rows), and each root path in that SP's own home
+**Show:** `"taxi-train-dev"` / `3000` vs `"taxi-train-prod"` / `0` (all rows), and each root path in that SP's own home
 (`/Workspace/Users/<app id>/...`), because `/Workspace/Shared` is writable by every user.
 **Say:** "Same code, two deployments. Prod trains on prod data. We don't copy dev's model into prod.
 'Deploy code, not models' is the Databricks-recommended pattern."
 
 ### Step 5: Lakeflow pipeline: data tests + features (5 min)
-**Do:** Jobs & Pipelines → `[dev] taxi-features-dev` → last update → graph.
+**Do:** Jobs & Pipelines → `taxi-features-dev` → last update → graph.
 **Show:**
 - graph `trips_raw → trips_clean → trips_train / trips_scoring → pickup_zip_features`;
 - click `trips_clean` → **Data quality**: rows dropped per expectation (`valid_fare`, `valid_distance`, `has_zip`);
@@ -144,18 +144,18 @@ databricks bundle validate -t prod -o json --profile prod-sp | jq '.resources.jo
 so training never starts on bad features."
 
 ### Step 6: Training job: Feature Store + MLflow 3 (6 min)
-**Do:** Jobs → `[dev] taxi-train-dev` → last run.
+**Do:** Jobs → `taxi-train-dev` → last run.
 **Show:**
 - tasks `refresh_features → train`, all on serverless; point out how short the train task is;
 - `src/jobs/train.py`: `create_training_set(... FeatureLookup ...)`, `log_model(name=...)`, `log_metrics(model_id=...)`;
-- Experiments → `/Users/<dev SP app id>/taxi-mlops/dev/[dev] taxi-fare-experiment` → run: params, `training_set` input, `git_sha` tag;
+- Experiments → `/Users/<dev SP app id>/taxi-fare-experiment-dev` → run: params, `training_set` input, `git_sha` tag;
 - Catalog Explorer → `taxi_fare_model` → version: metrics on the version page (MLflow 3 LoggedModel), lineage.
 **Say:** "Every version tells us which commit, which data and which metrics produced it.
 There's no online feature store on Free Edition, so the small zip-feature table is packed inside the model.
 Batch and real-time use the same artifact, so there's no training/serving skew."
 
 ### Step 7: MLflow deployment job with @champion (6 min)
-**Do:** Catalog Explorer → `taxi_fare_model` → Overview → **Deployment job** panel. Open the last run of `[dev] taxi-deployment-dev`.
+**Do:** Catalog Explorer → `taxi_fare_model` → Overview → **Deployment job** panel. Open the last run of `taxi-deployment-dev`.
 **Show:**
 - the run started **automatically** when the version was created (job parameters `model_name`, `model_version`);
 - `evaluation`: candidate vs `@champion` on `trips_scoring` (out-of-time); tags `eval_rmse`, `eval_decision` on the version;

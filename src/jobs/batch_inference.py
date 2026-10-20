@@ -119,7 +119,7 @@ def main() -> None:
 
     drifted = max(drift.values()) > args.max_psi or quality["rmse"] > args.max_rmse
     if drifted and args.retrain_on_drift.lower() == "true":
-        # Matched by suffix: dev presets prefix job names with "[dev] ".
+        # Matched by suffix so a name_prefix preset would not break it.
         jobs = [j for j in w.jobs.list() if j.settings.name.endswith(args.train_job_name)]
         if jobs:
             run = w.jobs.run_now(job_id=jobs[0].job_id)
