@@ -76,6 +76,18 @@ def test_unknown_zip_gets_defaults_not_nan(zip_features):
     assert X.loc[0, "zip_avg_fare"] == pytest.approx(zip_features["zip_avg_fare"].mean())
 
 
+def test_predictor_drops_dataframe_attrs(zip_features):
+    """Regression: Spark toPandas() attrs (pyspark objects) must not end up in the pickle."""
+    import pickle
+
+    class SparkOnly:  # stands in for pyspark.sql.metrics.PlanMetrics
+        pass
+
+    zip_features.attrs["metrics"] = SparkOnly()
+    blob = pickle.dumps(FarePredictor(model=None, zip_features=zip_features))
+    assert b"SparkOnly" not in blob
+
+
 @pytest.mark.parametrize(
     ("candidate", "champion", "promote"),
     [

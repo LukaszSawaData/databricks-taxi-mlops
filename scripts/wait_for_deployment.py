@@ -12,6 +12,7 @@ import time
 from datetime import timedelta
 
 from databricks.sdk import WorkspaceClient
+from databricks.sdk.errors import OperationFailed
 from databricks.sdk.service.jobs import RunResultState
 
 
@@ -48,9 +49,13 @@ def main() -> None:
         ).run_id
 
     print(f"deployment run: {w.jobs.get_run(run_id).run_page_url}", flush=True)
-    run = w.jobs.wait_get_run_job_terminated_or_skipped(
-        run_id=run_id, timeout=timedelta(minutes=args.timeout_min)
-    )
+    try:
+        w.jobs.wait_get_run_job_terminated_or_skipped(
+            run_id=run_id, timeout=timedelta(minutes=args.timeout_min)
+        )
+    except OperationFailed as e:  # failed runs raise; we still want the per-task summary
+        print(f"run failed: {e}")
+    run = w.jobs.get_run(run_id)
     for task in run.tasks or []:
         print(f"  {task.task_key}: {task.state.result_state if task.state else None}")
 
@@ -58,6 +63,7 @@ def main() -> None:
         with open(out, "a") as f:
             f.write(f"model_version={version}\n")
     if run.state.result_state != RunResultState.SUCCESS:
+        # Failing task output usually names the root cause (e.g. serving load errors).
         sys.exit(f"deployment job finished with {run.state.result_state}")
 
 

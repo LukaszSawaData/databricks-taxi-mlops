@@ -46,7 +46,10 @@ class FarePredictor:
     """
 
     def __init__(self, model, zip_features: pd.DataFrame):
-        zf = zip_features[[ZIP_KEY] + ZIP_FEATURES].astype("float64")
+        # Rebuild a plain frame: Spark's toPandas() puts pyspark PlanMetrics into df.attrs,
+        # which would be pickled into the model and fail to load on serving (no pyspark there).
+        cols = [ZIP_KEY] + ZIP_FEATURES
+        zf = pd.DataFrame(zip_features[cols].to_numpy(dtype="float64"), columns=cols)
         self.model = model
         self.zip_table = zf.set_index(ZIP_KEY)
         # Unknown zip at inference time -> global average instead of NaN.

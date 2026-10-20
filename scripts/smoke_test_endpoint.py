@@ -23,6 +23,8 @@ def main() -> None:
 
     w = WorkspaceClient()
     ep = w.serving_endpoints.get(args.endpoint)
+    if ep.config is None:  # first deployment failed -> only a pending config exists
+        sys.exit(f"{args.endpoint} has no active config (state={ep.state}); see serving logs")
     served = {e.entity_version for e in ep.config.served_entities}
     print(f"{args.endpoint}: ready={ep.state.ready} served_versions={served}")
     if args.expected_version not in served:
