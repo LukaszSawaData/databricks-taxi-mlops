@@ -57,10 +57,10 @@ src/taxi_mlops/          pure model logic (unit-tested), MLflow pyfunc wrapper, 
 scripts/                 CI helpers: wait_for_deployment, smoke_test_endpoint, rollback
 tests/                   pytest (no Databricks needed)
 .github/workflows/       ci.yml (PR), cd.yml (main), _deploy.yml (reusable), rollback.yml
-docs/DEMO_GUIDE.md       step-by-step guide for presenting this to an audience
+docs/PRESENTER_GUIDE.md  everything to present and explain this: objects, clicks, GitHub flow, script
 ```
 
-## Quick start (full presenter runbook: docs/DEMO_GUIDE.md)
+## Quick start (full presenter guide: docs/PRESENTER_GUIDE.md)
 
 ```bash
 # 0. tools: Databricks CLI >= 1.21 (the `databricks` in ~/.local/bin is the deprecated 0.18 - replace it)
@@ -78,7 +78,7 @@ pip install -r requirements-dev.txt && ruff check . && pytest -q
 # 3. open a PR -> CI deploys + runs dev; merge -> CD deploys prod (approve twice)
 ```
 
-Bundle commands always run **as the environment SP** (CI, or local profiles `dev-sp`/`prod-sp`; see docs/DEMO_GUIDE.md, step 0.4).
+Bundle commands always run **as the environment SP** (CI, or local profiles `dev-sp`/`prod-sp`; see docs/PRESENTER_GUIDE.md, part 4.4 E).
 Your PAT is only for Terraform. If you deploy as yourself, you own the model and the SP can't move `@champion`.
 
 Teardown: `databricks bundle destroy -t dev --profile dev-sp` (and prod), delete endpoints `taxi-fare-*`,
