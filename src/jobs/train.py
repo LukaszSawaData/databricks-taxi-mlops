@@ -102,6 +102,5 @@ def main() -> None:
     client.set_model_version_tag(full_model_name, version, "git_sha", args.git_sha)
     print(f"run={run.info.run_id} {full_model_name} v{version} {metrics}")
 
-
 if __name__ == "__main__":
     main()

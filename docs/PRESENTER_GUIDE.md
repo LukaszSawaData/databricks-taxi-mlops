@@ -7,6 +7,7 @@
 
 1. Pokazemy databricks usluge: 
    - katalogi
+            workspace.taxi_dev, workspace.taxi_prod
    - modele
    - feature
    - experimenty 
@@ -22,6 +23,7 @@
    - bundles  wraz z fodlerem resources.
    - biblioteki
    - oraz pipeline cicd
+   - MLflow tracks every model
 
 
 
@@ -30,41 +32,95 @@
       - omawiamy cicd 
       - omawiamy cd
       - Krok po kroku co sie odbywa
+      - Two different people can own two different gates: an engineer approves code, a model owner approves the model.
+Creating the prod endpoint takes about 15 minutes, so we'll check it at the end."
 
 
+4. Joby : 
+      TRAIN: 
+               1. Refresh_features 
+
+            ETL + Feature Store
+            https://dbc-b7edd512-cbb9.cloud.databricks.com/jobs/219390601285598/runs/819898332620342?w=7474659274314955&o=7474659274314955
+
+            https://dbc-b7edd512-cbb9.cloud.databricks.com/explore/data/workspace/taxi_dev/pickup_zip_features?w=7474659274314955&o=7474659274314955&activeTab=sample
+
+            Pokazac to ze jest Expectations w jobach features
 
 
+            train: 
+               https://dbc-b7edd512-cbb9.cloud.databricks.com/ml/experiments/3879132776008438/runs/5183f528c12d4ed0b2b5cb2ee38947c3?o=7474659274314955
+               https://dbc-b7edd512-cbb9.cloud.databricks.com/ml/experiments/3879132776008438/runs/8ea31042cf9e4c108c8f2a7c26d05d54?o=7474659274314955
+               
+               By experimetns: 
+
+               W Databricks experiments to podstawowe jednostki organizacyjne w MLflow służące do śledzenia i zarządzania przebiegami (ang. runs) uczenia maszynowego oraz modeli. Pozwalają logować parametry, metryki, kod oraz pliki wynikowe (artefakty), ułatwiając porównywanie różnych wersji model
+               • Śledzenie (Tracking): Zapisuje hiperparametry, wyniki metryk (np. accuracy, loss) oraz wersje kodu dla każdego treningu.
+               • Porównywanie: Umożliwia zestawianie wielu przebiegów obok siebie w interfejsie graficznym w celu wyboru najlepszego modelu.
+      DEPLOYMENT: 
 
 
+               Start when Every training run saves the model again with a new number: v1, v2, v3… The old versions are kept too. A "new version" is simply the model that was just trained.
+            - `evaluation`: compares the new version with `@champion` on `trips_scoring`; it stops if the new version is worse
+            - `approval_check`: automatic in dev, needs a human in prod
+            - `deployment`: points `@champion` at the new version and updates the endpoint `taxi-fare-<env>`
+            - `batch_inference`: scores `trips_scoring` and writes the monitoring tables - GDZIE ZNALEZC TE TEBELE !!!Batch inference job
+
+               @champion -> v4
+               updating endpoint taxi-fare-dev -> workspace.taxi_dev.taxi_fare_model v4
+               The deployment job promotes only better models, with a human gate in prod
 
 
+               mODEL REGISTRY
+               Twój zarejestrowany model nie żyje już w odizolowanym rejestrze, lecz jest pełnoprawnym obiektem w bazie danych identyfikowanym ścieżką:
+               catalog.schema.model_name
+                     pokaza prod jako werstwa 1 oraz dev jako registry z testam numer 4.
 
+5. Featery: 
+   - gdzie sa utrzymywane
+   ROLLBACK: 
 
+            ### Step 11: Rollback in one click (2 min)
+            **Click:** **Actions** → `rollback` → **Run workflow** → target `dev`, version `2` → **Run workflow**.
+            **Show:** after about a minute, `@champion` = v2, the endpoint serves v2, the smoke test is green.
+            **Say:** "If something goes wrong, we move a label back. No retraining, about one minute."
 
 
 15. uruchomic moze cicd 
       
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-**Say:** "Terraform builds the platform. The bundle builds the workload. The pipeline tests the data.
-MLflow tracks every model. The deployment job promotes only better models, with a human gate in prod.
-Serving makes it an API, monitoring watches it, and GitHub automates all of it."
+17. serving
+Serving makes it an API
 Optionally show **Serving** → `taxi-fare-prod`, now Ready.
+Endpoint
+https://dbc-b7edd512-cbb9.cloud.databricks.com/ml/endpoints/taxi-fare-dev/events?o=7474659274314955
+https://dbc-b7edd512-cbb9.cloud.databricks.com/ml/endpoints/taxi-fare-prod/overview?o=7474659274314955
+
+
+query endpoint: 
+
+{"dataframe_records": [
+  {"trip_distance": 1.2, "pickup_hour": 8,  "pickup_dow": 2, "pickup_zip": 10001},
+  {"trip_distance": 8.5, "pickup_hour": 18, "pickup_dow": 6, "pickup_zip": 10019},
+  {"trip_distance": 3.0, "pickup_hour": 1,  "pickup_dow": 7, "pickup_zip": 99999}
+]}
+
+
+
+
+18. 
+MODELS: 
+
+1. dev: https://dbc-b7edd512-cbb9.cloud.databricks.com/explore/data/models/workspace/taxi_dev/taxi_fare_model?o=7474659274314955&activeTab=overview&sortingColumn=name&sortingOrder=asc
+2. prd: 
+https://dbc-b7edd512-cbb9.cloud.databricks.com/explore/data/models/workspace/taxi_prod/taxi_fare_model?o=7474659274314955
+
+
+
+
+
+
+
 **Start here (entry point = the code on your laptop):**
 1. Create a branch and change the code.
 2. Push the branch and open a pull request.
@@ -86,152 +142,13 @@ Optionally show **Serving** → `taxi-fare-prod`, now Ready.
 
 
 
-Model used: 
-1. We predict the **price of a NYC taxi trip** (`fare_amount`) from distance, pickup hour, weekday and pickup zip code.
-2. **Source data:** `samples.nyctaxi.trips`, the built-in dataset 
-
-**Say:** "Two different people can own two different gates: an engineer approves code, a model owner approves the model.
-Creating the prod endpoint takes about 15 minutes, so we'll check it at the end."
 
 
 
-
-1. show workspace
-2. Show 2 schemas: workspace.taxi_dev, workspace.taxi_prod
-3. Jobs list i rodzaje: 
-
-      1 Lakeflow pipeline: `taxi-features-<env>`
-            - `trips_raw`: a sample of the source (dev: 3,000 rows, prod: all rows)
-            - `trips_clean`: the data tests run here; bad rows are dropped
-            - `trips_train`: trips before 2016-02-15, used for training
-            - `trips_scoring`: trips from 2016-02-15, the "new" data used for evaluation and scoring
-            - `pickup_zip_features`: the Feature Store table (key `pickup_zip`), computed from `trips_train`
-            https://dbc-b7edd512-cbb9.cloud.databricks.com/pipelines/c8dc1740-b712-452e-a4c9-359124914a71/updates/d1655c9a-1d2f-4e27-b618-f8d38164ba18?w=7474659274314955&o=7474659274314955
-
-
-
-            https://dbc-b7edd512-cbb9.cloud.databricks.com/pipelines/ae08b94c-e4db-4d5a-840b-bae49efcd0f6?w=7474659274314955
-               Pokazac joba z featureami + w jaki sposób mozna historyziwać dane cechy.
-
-
-            Pokazac to ze jest Expectations w jobach features.
-
-            | 7 | Feature Store table | **Catalog** → `workspace` → `taxi_dev` → `pickup_zip_features` (see **primary key** `pickup_zip`) | – |  Do czego to sluzy
-
-
-
-
-      3 jobs: `taxi-train-<env>`, `taxi-batch-inference-<env>`
-         | Training data | 3,000 sampled trips | all trips (~22k) |
-            **Job `taxi-train-<env>`:**
-               - task `refresh_features` runs the pipeline
-               - task `train` trains the model and registers a new version in `workspace.taxi_<env>.taxi_fare_model`
-
-               | 8 | Train job (dev) | **Jobs & Pipelines** → `taxi-train-dev` → **Runs** | [open](https://dbc-b7edd512-cbb9.cloud.databricks.com/jobs/219390601285598?w=7474659274314955) |
-               | 9 | Train job (prod) | `taxi-train-prod` | [open](https://dbc-b7edd512-cbb9.cloud.databricks.com/jobs/935896757180582?w=7474659274314955) |
-
-
-
-               train joby a ffeatures store ????
-
-
-
-
-
-      `taxi-deployment-<env>`, 
-
-         Start when Every training run saves the model again with a new number: v1, v2, v3… The old versions are kept too. A "new version" is simply the model that was just trained.
-
-         `taxi-deployment-<env>`:**
-            - `evaluation`: compares the new version with `@champion` on `trips_scoring`; it stops if the new version is worse
-            - `approval_check`: automatic in dev, needs a human in prod
-            - `deployment`: points `@champion` at the new version and updates the endpoint `taxi-fare-<env>`
-            - `batch_inference`: scores `trips_scoring` and writes the monitoring tables
-
-
-
-
-      1 MLflow experiment and 1 registered model `taxi_fare_model`
-
-4. How bundles works
-5.  Github repository with CICD
- **GitHub Actions** (`.github/workflows/`):
-   - `ci.yml`: on a pull request, runs tests, then deploys and runs everything on dev
-   - `cd.yml`: on a push to `main`, deploys dev, waits for human approval, then deploys prod
-   - `rollback.yml`: started manually, serves an older model version again
-
-**"Deploy code, not models":** prod is **not** a copy of dev's model. The same code is deployed to prod, and prod trains its own model on prod data.
-
-
-
-MODELS: 
-
-1. dev: https://dbc-b7edd512-cbb9.cloud.databricks.com/explore/data/models/workspace/taxi_dev/taxi_fare_model?o=7474659274314955&activeTab=overview&sortingColumn=name&sortingOrder=asc
-2. prd: 
-https://dbc-b7edd512-cbb9.cloud.databricks.com/explore/data/models/workspace/taxi_prod/taxi_fare_model?o=7474659274314955
 
 @champion - co to jest . na devie z auotmatu na prodzie trzeba approva ??
 
 
- Endpoint - trrzeba zrobic appova !!!? zeb
-
-Features - jak historie pokazac ????
-
-
-
-
-ROLLBACK: 
-
-### Step 11: Rollback in one click (2 min)
-**Click:** **Actions** → `rollback` → **Run workflow** → target `dev`, version `2` → **Run workflow**.
-**Show:** after about a minute, `@champion` = v2, the endpoint serves v2, the smoke test is green.
-**Say:** "If something goes wrong, we move a label back. No retraining, about one minute."
-
-
-
-REJESTROWANIE MODELU ??????
-
-| 10 | MLflow experiment (dev) | **Experiments** → `taxi-fare-experiment-dev` → newest run | [open](https://dbc-b7edd512-cbb9.cloud.databricks.com/ml/experiments/3879132776008438?w=7474659274314955) |
-| 11 | MLflow experiment (prod) | **Experiments** → `taxi-fare-experiment-prod` | [open](https://dbc-b7edd512-cbb9.cloud.databricks.com/ml/experiments/1726300016789788?w=7474659274314955) |
-
-
-| 12 | Model (dev) | **Catalog** → `workspace` → `taxi_dev` → **Models** → `taxi_fare_model` | [open](https://dbc-b7edd512-cbb9.cloud.databricks.com/explore/data/models/workspace/taxi_dev/taxi_fare_model?w=7474659274314955) |
-| 13 | Model (prod) | same, `taxi_prod` | [open](https://dbc-b7edd512-cbb9.cloud.databricks.com/explore/data/models/workspace/taxi_prod/taxi_fare_model?w=7474659274314955) |
-
-
-
-
-
-| 14 | Deployment job (dev) | `taxi-deployment-dev` → **Runs** | [open](https://dbc-b7edd512-cbb9.cloud.databricks.com/jobs/110536595814426?w=7474659274314955) |
-| 15 | Deployment job (prod), waiting for approval | `taxi-deployment-prod` → **Runs** | [open](https://dbc-b7edd512-cbb9.cloud.databricks.com/jobs/420972634839066?w=7474659274314955) |
-
-
-
-
-
-
-
-
-| 16 | Endpoint (dev) | **Serving** → `taxi-fare-dev` | – |
-
-
-
-
-| 17 | Batch inference job (dev) | `taxi-batch-inference-dev` | [open](https://dbc-b7edd512-cbb9.cloud.databricks.com/jobs/413380434300039?w=7474659274314955) |
-
-
-
-| 18 | Predictions + metrics tables | **Catalog** → `taxi_dev` → `taxi_predictions`, `taxi_model_metrics` | – |
-
-
-
-
-
-
-
-| 19 | Data quality monitor | **Catalog** → `taxi_dev` → `taxi_predictions` → tab **Quality** | – |
-
-GITHUB:
 ## Part 4: GitHub: how the process works and how to start it
 
 ### 4.1 The four workflow files
@@ -340,34 +257,6 @@ Four green tasks: `evaluation` → `approval_check` → `deployment` → `batch_
 On version 3, the tags `eval_rmse`, `eval_decision` and `approval_check = Approved`.
 **Say:** "Nobody clicked Deploy. The new version had to beat the current champion on new data it has never seen.
 In dev, approval is automatic. In prod, a person approves, and you'll see that in a minute."
-
-### Step 8: The live API and monitoring (5 min)
-**Click:** **Serving** → `taxi-fare-dev`: state Ready, served version 3, scale to zero on.
-(If the PR from step 2 has already finished, dev serves **v4**. That's the CI result: say so and use 4 below.)
-Click **Use** / **Query endpoint**, paste this, then **Send request**:
-```json
-{"dataframe_records": [
-  {"trip_distance": 1.2, "pickup_hour": 8,  "pickup_dow": 2, "pickup_zip": 10001},
-  {"trip_distance": 8.5, "pickup_hour": 18, "pickup_dow": 6, "pickup_zip": 10019},
-  {"trip_distance": 3.0, "pickup_hour": 1,  "pickup_dow": 7, "pickup_zip": 99999}
-]}
-```
-Expected answer is about `[8.2, 29.5, 11.3]` dollars. The unknown zip 99999 still gets a sensible price.
-Terminal alternative:
-`DATABRICKS_CONFIG_PROFILE=dev-sp python scripts/smoke_test_endpoint.py --endpoint taxi-fare-dev --expected-version 3`
-
-Then in the **SQL Editor**:
-```sql
-SELECT model_version, measured_at, rows, ROUND(rmse,2) rmse, ROUND(r2,3) r2,
-       ROUND(psi_trip_distance,3) psi_distance, ROUND(psi_pickup_hour,3) psi_hour
-FROM workspace.taxi_dev.taxi_model_metrics ORDER BY measured_at DESC;
-```
-Then **Catalog** → `taxi_dev` → `taxi_predictions` → tab **Quality** (the Databricks data quality monitor).
-**Say:** "Every new champion scores fresh trips. We store quality (RMSE, R²) and drift (PSI; above 0.2 means the data changed).
-Drift can start retraining automatically, but the new model still has to pass evaluation and approval."
-
-
-
 
 
 
