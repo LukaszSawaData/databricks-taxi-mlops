@@ -3,7 +3,6 @@
 import argparse
 import sys
 
-
 def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--model_name", required=True)
